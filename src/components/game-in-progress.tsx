@@ -121,60 +121,83 @@ export default function GameInProgress({ team1: initialTeam1, team2: initialTeam
     setIsGoalModalOpen(true)
   }
 
+  const getFormattedGameName = () => {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const year = today.getFullYear();
+    return `Partido-${day}/${month}/${year}.pdf`;
+  }
+
   const exportToPDF = () => {
     const doc = new jsPDF()
     let yPos = 20
+    const pageHeight = doc.internal.pageSize.height
+    const margin = 20
+    const lineHeight = 7
+
+    const addNewPageIfNeeded = () => {
+      if (yPos > pageHeight - margin) {
+        doc.addPage()
+        yPos = margin
+      }
+    }
 
     // Título
     doc.setFontSize(20)
-    doc.text("Resumen del Partido", 105, yPos, { align: "center" })
-    yPos += 10
+    doc.text(getFormattedGameName(), 105, yPos, { align: "center" })
+    yPos += lineHeight * 2
 
     // Resultado final
     doc.setFontSize(16)
     const team1Goals = goals.filter((g) => g.team === "team1").length
     const team2Goals = goals.filter((g) => g.team === "team2").length
     doc.text(`Resultado Final: Equipo 1 ${team1Goals} - ${team2Goals} Equipo 2`, 105, yPos, { align: "center" })
-    yPos += 10
+    yPos += lineHeight * 2
 
     // Goles
     doc.setFontSize(14)
     doc.text("Goles:", 20, yPos)
-    yPos += 10
+    yPos += lineHeight
     goals.forEach((goal, index) => {
+      addNewPageIfNeeded()
       doc.setFontSize(12)
       const goalText = `${index + 1}. ${goal.scorer} (${goal.team === "team1" ? "Equipo 1" : "Equipo 2"}) - Tiempo: ${formatTime(goal.time)}`
       doc.text(goalText, 30, yPos)
+      yPos += lineHeight
       if (goal.assister && goal.assister !== "Sin asistencia") {
-        yPos += 5
+        addNewPageIfNeeded()
         doc.text(`   Asistencia: ${goal.assister}`, 30, yPos)
+        yPos += lineHeight
       }
-      yPos += 10
     })
 
     // Estadísticas de jugadores
-    yPos += 10
+    yPos += lineHeight
+    addNewPageIfNeeded()
     doc.setFontSize(14)
     doc.text("Estadísticas de Jugadores:", 20, yPos)
-    yPos += 10
+    yPos += lineHeight
 
     const addTeamStats = (team: Team, teamName: string) => {
+      addNewPageIfNeeded()
       doc.setFontSize(12)
       doc.text(teamName, 30, yPos)
-      yPos += 5
+      yPos += lineHeight
       team.players.forEach((player) => {
+        addNewPageIfNeeded()
         const playerStats = `${player.name}: ${player.goals} goles, ${player.assists} asistencias`
         doc.text(playerStats, 40, yPos)
-        yPos += 5
+        yPos += lineHeight
       })
-      yPos += 5
+      yPos += lineHeight
     }
 
     addTeamStats(team1, "Equipo 1")
     addTeamStats(team2, "Equipo 2")
 
     // Guardar el PDF
-    doc.save("resumen-partido.pdf")
+    doc.save(getFormattedGameName())
   }
 
   return (
@@ -270,7 +293,7 @@ export default function GameInProgress({ team1: initialTeam1, team2: initialTeam
         <ul className="space-y-2">
           {goals.map((goal, index) => (
             <li key={index} className="bg-secondary p-2 rounded-md">
-              Gol de {goal.scorer} ({goal.team === "team1" ? "Equipo 1" : "Equipo 2"}) - Tiempo: {formatTime(goal.time)}
+              Gol #{index + 1}: Gol de {goal.scorer} ({goal.team === "team1" ? "Equipo 1" : "Equipo 2"}) - Tiempo: {formatTime(goal.time)}
               {goal.assister && goal.assister !== "Sin asistencia" && ` - Asistencia de ${goal.assister}`}
             </li>
           ))}
@@ -295,4 +318,3 @@ export default function GameInProgress({ team1: initialTeam1, team2: initialTeam
     </div>
   )
 }
-
